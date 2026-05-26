@@ -41,6 +41,9 @@ func formatTableBlock(block []string) []string {
 		for len(widths) < len(cells) {
 			widths = append(widths, 3)
 		}
+		if i == 1 {
+			continue
+		}
 		for j, cell := range cells {
 			width := displayWidth(cell)
 			if width > widths[j] {
@@ -54,6 +57,7 @@ func formatTableBlock(block []string) []string {
 	for len(aligns) < len(widths) {
 		aligns = append(aligns, "---")
 	}
+	applySeparatorMinimumWidths(widths, aligns)
 
 	formatted := make([]string, len(block))
 	for i, row := range rows {
@@ -64,6 +68,26 @@ func formatTableBlock(block []string) []string {
 		formatted[i] = formatDataRow(row, widths)
 	}
 	return formatted
+}
+
+func applySeparatorMinimumWidths(widths []int, aligns []string) {
+	for i := range widths {
+		if minimum := separatorMinimumWidth(aligns[i]); widths[i] < minimum {
+			widths[i] = minimum
+		}
+	}
+}
+
+func separatorMinimumWidth(align string) int {
+	// isTableSeparator requires at least three dashes after alignment colons are stripped.
+	switch align {
+	case ":--", "--:":
+		return 4
+	case ":-:":
+		return 5
+	default:
+		return 3
+	}
 }
 
 func splitTableRow(line string) []string {

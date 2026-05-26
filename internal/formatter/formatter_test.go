@@ -3,6 +3,7 @@ package formatter
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -46,6 +47,44 @@ func TestFormatTablesUsesDisplayWidth(t *testing.T) {
 	want := "| Name | Value |\n| ---- | ----- |\n| 日本 | 1     |\n| Go   | 20    |\n"
 	if got := FormatTables(input); got != want {
 		t.Fatalf("FormatTables display-width mismatch\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestFormatTablesRecomputesShorterColumnWidths(t *testing.T) {
+	input := "| Name      | Value |\n| --------- | ----- |\n| A         | 1     |\n| B         | 2     |\n"
+	want := "| Name | Value |\n| ---- | ----- |\n| A    | 1     |\n| B    | 2     |\n"
+	if got := FormatTables(input); got != want {
+		t.Fatalf("FormatTables shorter-column-width mismatch\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestFormatTablesKeepsAlignedSeparatorsRecognizableAfterShrink(t *testing.T) {
+	input := "| A          | B          | C          |\n| :--------- | :--------: | ---------: |\n| x          | y          | z          |\n"
+	want := "| A    | B     | C    |\n| :--- | :---: | ---: |\n| x    | y     | z    |\n"
+	if got := FormatTables(input); got != want {
+		t.Fatalf("FormatTables aligned shrink mismatch\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestFormatTablesKeepsTrailingAlignedSeparatorColumnsRecognizable(t *testing.T) {
+	input := "| A | B | C |\n| --- | :--- | :---: | ---: |\n| x | y | z | q |\n"
+	want := "| A   | B    | C     |      |\n| --- | :--- | :---: | ---: |\n| x   | y    | z     | q    |\n"
+	if got := FormatTables(input); got != want {
+		t.Fatalf("FormatTables trailing aligned separator mismatch\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestFormatTablesReformatsAlignedShrinkOutput(t *testing.T) {
+	input := "| A          | B          | C          |\n| :--------- | :--------: | ---------: |\n| x          | y          | z          |\n"
+	formatted := FormatTables(input)
+	if got := FormatTables(formatted); got != formatted {
+		t.Fatalf("FormatTables aligned shrink idempotence mismatch\nwant:\n%s\ngot:\n%s", formatted, got)
+	}
+
+	expanded := strings.Replace(formatted, "| x    | y     | z    |", "| longer | y | z |", 1)
+	want := "| A      | B     | C    |\n| :----- | :---: | ---: |\n| longer | y     | z    |\n"
+	if got := FormatTables(expanded); got != want {
+		t.Fatalf("FormatTables aligned shrink recompute mismatch\nwant:\n%s\ngot:\n%s", want, got)
 	}
 }
 
