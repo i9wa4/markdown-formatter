@@ -20,6 +20,12 @@ plan, not silently folded into compatibility work.
   ATX headings to exactly one blank line when a neighboring line exists. It
   skips document start/end boundaries and ignores headings inside fenced code
   blocks.
+- Pipe table alignment: column widths are recomputed from current header and
+  body cell contents. Separator dash lengths preserve alignment markers and
+  column count, but do not keep stale wider padding after cell text shrinks.
+  Emitted separator cells keep enough dash width to remain recognizable as
+  separators on later passes: unaligned columns use width 3, left and right
+  aligned columns use width 4, and centered columns use width 5.
 
 ## 2. Future Release Path
 

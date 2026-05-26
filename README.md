@@ -44,12 +44,12 @@ In Vim, filter the current buffer through the formatter:
 
 ## 3. Formatting
 
-| Pass            | Behavior                                     |
-| --------------- | -------------------------------------------- |
-| Heading numbers | Numbers ATX headings from h2 by default.     |
-| Heading spacing | Keeps one blank line around headings.        |
-| Tables          | Aligns pipe tables, including CJK width 2.   |
-| EOF newline     | Keeps exactly one final newline.             |
+| Pass            | Behavior                                   |
+| --------------- | ------------------------------------------ |
+| Heading numbers | Numbers ATX headings from h2 by default.   |
+| Heading spacing | Keeps one blank line around headings.      |
+| Tables          | Aligns pipe tables, including CJK width 2. |
+| EOF newline     | Keeps exactly one final newline.           |
 
 Useful options:
 
