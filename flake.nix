@@ -13,7 +13,8 @@
   };
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # Master provides cached Go 1.26.10 while nixpkgs-unstable is still on 1.26.9.
+    nixpkgs.url = "github:NixOS/nixpkgs/master";
     flake-parts.url = "github:hercules-ci/flake-parts";
     git-hooks = {
       url = "github:cachix/git-hooks.nix";
@@ -53,17 +54,11 @@
         }:
         let
           ghWorkflowFiles = "^\\.github/workflows/.*\\.(yml|yaml)$";
-          go126 = pkgs.go_1_26.overrideAttrs (_old: rec {
-            version = "1.26.4";
-            src = pkgs.fetchurl {
-              url = "https://go.dev/dl/go${version}.src.tar.gz";
-              hash = "sha256-T2aKMvv8ETLmqIH7lowvHa2mMUkqM5IRc1+7JVpCYC0=";
-            };
-          });
-          buildGo126Module = pkgs.buildGoModule.override { go = go126; };
+          goToolchain = pkgs.go_1_26;
+          buildGoModuleWithToolchain = pkgs.buildGoModule.override { go = goToolchain; };
           commonDevPackages = with pkgs; [
             gh
-            go126
+            goToolchain
           ];
           goDevPackages = with pkgs; [
             gopls
@@ -113,89 +108,6 @@
               meta.description = "Update flake inputs.";
             };
 
-            update-go-toolchain = {
-              type = "app";
-              program = "${
-                pkgs.writeShellApplication {
-                  name = "update-go-toolchain";
-                  runtimeInputs = with pkgs; [
-                    coreutils
-                    curl
-                    jq
-                    nix
-                    perl
-                  ];
-                  text = ''
-                    set -euo pipefail
-
-                    version_gt() {
-                      first="$1"
-                      second="$2"
-                      [ "$first" != "$second" ] &&
-                        [ "$(printf '%s\n%s\n' "$second" "$first" | sort -V | tail -n 1)" = "$first" ]
-                    }
-
-                    override_go="$(
-                      perl -0ne 'print "$1\n" if /go126 = pkgs\.go_1_26\.overrideAttrs \(_old: rec \{\n\s*version = "([0-9]+\.[0-9]+\.[0-9]+)";/' flake.nix
-                    )"
-                    if [ -z "$override_go" ]; then
-                      echo "Failed to extract Go override patch version from flake.nix" >&2
-                      exit 1
-                    fi
-
-                    go_minor="$(printf '%s\n' "$override_go" | cut -d. -f1-2)"
-                    latest="$(
-                      curl -fsSL 'https://go.dev/dl/?mode=json&include=all' |
-                        jq -r --arg prefix "go$go_minor." '
-                          [
-                            .[].version
-                            | select(startswith($prefix))
-                            | sub("^go"; "")
-                            | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))
-                          ]
-                          | sort_by(split(".") | map(tonumber))
-                          | last // empty
-                        '
-                    )"
-                    if [ -z "$latest" ]; then
-                      echo "go.dev does not currently publish a stable Go $go_minor patch" >&2
-                      exit 1
-                    fi
-
-                    echo "current_go_version=$override_go"
-                    echo "latest_go_version=$latest"
-
-                    if ! version_gt "$latest" "$override_go"; then
-                      echo "Go toolchain override is already at the latest Go $go_minor patch"
-                      echo "status=up_to_date"
-                      exit 0
-                    fi
-
-                    src_url="https://go.dev/dl/go$latest.src.tar.gz"
-                    hash="$(nix store prefetch-file --json "$src_url" | jq -r .hash)"
-                    if [ -z "$hash" ] || [ "$hash" = "null" ]; then
-                      echo "Failed to prefetch $src_url" >&2
-                      exit 1
-                    fi
-
-                    GO_VERSION="$latest" GO_HASH="$hash" perl -0pi -e '
-                      my $version = $ENV{"GO_VERSION"};
-                      my $hash = $ENV{"GO_HASH"};
-                      s/(go126 = pkgs\.go_1_26\.overrideAttrs \(_old: rec \{\n\s*version = ")[^"]+(";)/$1$version$2/
-                        or die "failed to update Go override version\n";
-                      s/(go126 = pkgs\.go_1_26\.overrideAttrs \(_old: rec \{.*?src = pkgs\.fetchurl \{\n\s*url = "https:\/\/go\.dev\/dl\/go\$\{version\}\.src\.tar\.gz";\n\s*hash = ")[^"]+(";)/$1$hash$2/s
-                        or die "failed to update Go override hash\n";
-                    ' flake.nix
-
-                    echo "Updated Go toolchain override to $latest"
-                    echo "hash=$hash"
-                    echo "status=updated"
-                  '';
-                }
-              }/bin/update-go-toolchain";
-              meta.description = "Update the pinned Go patch override to the latest same-minor go.dev release.";
-            };
-
             check = {
               type = "app";
               program = "${pkgs.writeShellScriptBin "check" ''
@@ -207,7 +119,7 @@
           };
 
           # nix build
-          packages.default = buildGo126Module {
+          packages.default = buildGoModuleWithToolchain {
             pname = "markdown-formatter";
             inherit version;
             src = ./.;
@@ -299,7 +211,8 @@
               # === Secrets detection ===
               gitleaks = {
                 enable = true;
-                entry = "${pkgs.gitleaks}/bin/gitleaks protect --verbose --redact --staged";
+                entry = "${pkgs.gitleaks}/bin/gitleaks git --verbose --redact --staged";
+                args = pkgs.lib.mkForce [ ];
                 pass_filenames = false;
               };
 
@@ -359,7 +272,7 @@
               # Go
               govet = {
                 enable = true;
-                entry = "${pkgs.bash}/bin/bash -c 'test -n \"$NIX_BUILD_TOP\" || ${go126}/bin/go vet ./...'";
+                entry = "${pkgs.bash}/bin/bash -c 'test -n \"$NIX_BUILD_TOP\" || ${goToolchain}/bin/go vet ./...'";
                 pass_filenames = false;
                 types = [ "go" ];
               };
