@@ -46,20 +46,28 @@ renumbering headings. Keep behavior decisions that affect Markdown output in
 ## 3. Nix And CI
 
 The flake owns the Go toolchain, formatter checks, release tooling, and CI
-entry points. Keep `go.mod` and `flake.nix` aligned when changing Go versions.
+entry points. The module's minimum supported Go version and the Nix build
+toolchain are separate policies.
 
 Go version policy:
 
-- Keep `go.mod` at major.minor (for example `go 1.26`)
-- Keep `flake.nix` on the same major.minor (`pkgs.go_1_26`)
-- Use the Go patch version supplied by the pinned `nixpkgs` input. Update
-  `flake.lock` to pick up patch releases, then run `nix flake check` and
-  `nix build` before opening the update PR.
+- Keep `go.mod` at the oldest supported major.minor (`go 1.26`). Raise it only
+  when intentionally ending support for that version.
+- Use `pkgs.go_1_27` for Nix builds, development shells, CI, and releases.
+  The pinned `nixpkgs-26.05-darwin` revision supplies the patch version and
+  keeps `x86_64-darwin` available; current unstable no longer evaluates that
+  declared system. Updating the pin changes other Nix tools too. Review those
+  changes, run `nix flake check` and `nix build`, and confirm the Linux and
+  macOS CI jobs before treating a new pin as verified.
+- Do not add a `toolchain` directive to `go.mod` without a specific need.
+  Nix shells set `GOTOOLCHAIN=local` so Go does not download a different
+  compiler automatically.
 - Dependabot's Nix flake updates can propose newer `nixpkgs` lock revisions.
   Review the Go patch version in each proposal; these updates can also change
   other packages and are not Go-specific patch proposals.
-- Minor-version migrations require updating the `go_1_26` package reference
-  and `go.mod`, then rerunning the alignment checks.
+- Minor-version migrations require updating the Nix package reference and
+  reviewing the module minimum separately, then rerunning compatibility checks.
+  CI requires the Nix Go version to be at least the `go.mod` minimum.
 
 The primary CI workflow is `.github/workflows/ci.yml` with workflow name `ci`.
 It runs Nix checks, Nix build, Go vulnerability checks, and secret scanning.

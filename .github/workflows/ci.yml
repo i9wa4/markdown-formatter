@@ -45,21 +45,22 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Check Go toolchain alignment
+      - name: Check Go toolchain minimum
         run: |
           set -euo pipefail
           mod_go="$(awk '/^go / { print $2; exit }' go.mod | cut -d. -f1-2)"
           nix_go="$(
-            sed -nE 's/.*pkgs\.go_([0-9]+_[0-9]+).*/\1/p' flake.nix \
-              | head -n 1 \
-              | tr '_' '.'
+            sed -nE 's/^[[:space:]]*goToolchain = pkgs\.go_([0-9]+)_([0-9]+);[[:space:]]*$/\1.\2/p' flake.nix
           )"
           echo "go.mod: $mod_go"
           echo "flake.nix: $nix_go"
-          test -n "$mod_go" || { echo "Failed to extract Go version from go.mod" >&2; exit 1; }
-          test -n "$nix_go" || { echo "Failed to extract Go version from flake.nix" >&2; exit 1; }
-          if [[ "$mod_go" != "$nix_go" ]]; then
-            echo "Go major.minor mismatch: go.mod=$mod_go, flake.nix=$nix_go" >&2
+          [[ "$mod_go" =~ ^[0-9]+\.[0-9]+$ ]] || { echo "Failed to extract Go version from go.mod" >&2; exit 1; }
+          [[ "$nix_go" =~ ^[0-9]+\.[0-9]+$ ]] || { echo "Failed to extract Go version from flake.nix" >&2; exit 1; }
+          IFS=. read -r mod_major mod_minor <<< "$mod_go"
+          IFS=. read -r nix_major nix_minor <<< "$nix_go"
+          if (( 10#$nix_major < 10#$mod_major ||
+                (10#$nix_major == 10#$mod_major && 10#$nix_minor < 10#$mod_minor) )); then
+            echo "Nix Go toolchain $nix_go is below go.mod minimum $mod_go" >&2
             exit 1
           fi
 
