@@ -45,32 +45,21 @@ renumbering headings. Keep behavior decisions that affect Markdown output in
 
 ## 3. Nix And CI
 
-The flake owns the reproducible toolchain, formatter checks, release tooling,
-and CI entry points. Keep `go.mod`, `flake.nix`, and the Go override aligned
-when changing Go versions.
+The flake owns the Go toolchain, formatter checks, release tooling, and CI
+entry points. Keep `go.mod` and `flake.nix` aligned when changing Go versions.
 
 Go version policy:
 
 - Keep `go.mod` at major.minor (for example `go 1.26`)
 - Keep `flake.nix` on the same major.minor (`pkgs.go_1_26`)
-- Keep the `flake.nix` Go override on the latest stable same-minor patch release
-  published by go.dev
-- To update the Go patch override, run:
-
-  ```sh
-  nix run .#update-go-toolchain
-  ```
-
-- The command reads the current Go major.minor from the `go126` override in
-  `flake.nix`, queries go.dev for the latest stable patch release for that same
-  major.minor, and updates only the override version/hash in `flake.nix` when a
-  newer patch exists.
-- If the override is already current, the command exits 0 with
-  `status=up_to_date` and leaves the repository unchanged.
-- After the command updates `flake.nix`, run `nix flake check` and `nix build`
-  before opening the update PR.
-- Minor-version migrations still require manually updating the hard-coded
-  `go126` / `go_1_26` names and then rerunning the alignment checks.
+- Use the Go patch version supplied by the pinned `nixpkgs` input. Update
+  `flake.lock` to pick up patch releases, then run `nix flake check` and
+  `nix build` before opening the update PR.
+- Dependabot's Nix flake updates can propose newer `nixpkgs` lock revisions.
+  Review the Go patch version in each proposal; these updates can also change
+  other packages and are not Go-specific patch proposals.
+- Minor-version migrations require updating the `go_1_26` package reference
+  and `go.mod`, then rerunning the alignment checks.
 
 The primary CI workflow is `.github/workflows/ci.yml` with workflow name `ci`.
 It runs Nix checks, Nix build, Go vulnerability checks, and secret scanning.
