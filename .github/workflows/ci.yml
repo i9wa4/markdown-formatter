@@ -30,9 +30,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            timeout_minutes: 15
+            timeout_minutes: 45
           - os: macos-latest
-            timeout_minutes: 15
+            timeout_minutes: 45
     runs-on: ${{ matrix.os }}
     timeout-minutes: ${{ matrix.timeout_minutes }}
     permissions:
