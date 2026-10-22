@@ -51,7 +51,7 @@ toolchain are separate policies.
 
 Go version policy:
 
-- Keep `go.mod` at the oldest supported major.minor (`go 1.26`). Raise it only
+- Keep `go.mod` at the oldest supported major.minor (`go 1.27`). Raise it only
   when intentionally ending support for that version.
 - Use `pkgs.go_1_27` for Nix builds, development shells, CI, and releases.
   The pinned `nixpkgs-26.05-darwin` revision supplies the patch version and
