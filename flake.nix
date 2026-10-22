@@ -56,6 +56,9 @@
           ghWorkflowFiles = "^\\.github/workflows/.*\\.(yml|yaml)$";
           goToolchain = pkgs.go_1_27;
           buildGoModuleWithToolchain = pkgs.buildGoModule.override { go = goToolchain; };
+          govulncheckWithToolchain = pkgs.govulncheck.override {
+            buildGoLatestModule = buildGoModuleWithToolchain;
+          };
           commonDevPackages = with pkgs; [
             gh
             goToolchain
@@ -68,7 +71,7 @@
           ciPackages = with pkgs; [
             gitleaks
             golangci-lint
-            govulncheck
+            govulncheckWithToolchain
           ];
           cdPackages = with pkgs; [
             goreleaser
