@@ -13,8 +13,8 @@
   };
 
   inputs = {
-    # Master provides cached Go 1.26.10 while nixpkgs-unstable is still on 1.26.9.
-    nixpkgs.url = "github:NixOS/nixpkgs/master";
+    # Nixpkgs 26.05 is the last release supporting x86_64-darwin.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     flake-parts.url = "github:hercules-ci/flake-parts";
     git-hooks = {
       url = "github:cachix/git-hooks.nix";
@@ -54,8 +54,11 @@
         }:
         let
           ghWorkflowFiles = "^\\.github/workflows/.*\\.(yml|yaml)$";
-          goToolchain = pkgs.go_1_26;
+          goToolchain = pkgs.go_1_27;
           buildGoModuleWithToolchain = pkgs.buildGoModule.override { go = goToolchain; };
+          govulncheckWithToolchain = pkgs.govulncheck.override {
+            buildGoLatestModule = buildGoModuleWithToolchain;
+          };
           commonDevPackages = with pkgs; [
             gh
             goToolchain
@@ -68,7 +71,7 @@
           ciPackages = with pkgs; [
             gitleaks
             golangci-lint
-            govulncheck
+            govulncheckWithToolchain
           ];
           cdPackages = with pkgs; [
             goreleaser
@@ -141,15 +144,18 @@
           # nix develop
           devShells = {
             default = pkgs.mkShell {
+              GOTOOLCHAIN = "local";
               buildInputs = commonDevPackages ++ goDevPackages;
               shellHook = ''
                 ${config.pre-commit.installationScript}
               '';
             };
             ci = pkgs.mkShell {
+              GOTOOLCHAIN = "local";
               buildInputs = commonDevPackages ++ ciPackages;
             };
             cd = pkgs.mkShell {
+              GOTOOLCHAIN = "local";
               buildInputs = commonDevPackages ++ cdPackages;
             };
           };
