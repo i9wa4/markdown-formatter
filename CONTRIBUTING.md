@@ -69,6 +69,29 @@ Go version policy:
   reviewing the module minimum separately, then rerunning compatibility checks.
   CI requires the Nix Go version to be at least the `go.mod` minimum.
 
+Dependabot update policy:
+
+- `.github/dependabot.yml` checks GitHub Actions, Go modules, and Nix daily,
+  with a seven-day version-update cooldown for each. Actions already has
+  separate groups for version and security updates; Nix has no group.
+- Before considering a four-week Nix trial with weekly checks and grouped
+  updates, record a four-week comparison period's PRs by ecosystem and update
+  type: version, security, or unverified. Keep each PR URL and first-party
+  evidence for its type. For security updates, record the explicit GitHub alert
+  or vulnerability link alongside the PR; a missing link alone does not prove
+  a version update. Leave a PR unverified without affirmative type evidence.
+- Measure review minutes per PR and update-job successes and failures with
+  causes. For each applicable published upstream security advisory, record its
+  publication time and the remediation PR creation time with their URLs. Compare
+  elapsed hours from publication to PR creation in both the four-week baseline
+  and trial; keep advisories without a remediation PR marked unresolved. Decide
+  whether to start the trial only after the confirmed Nix version-update
+  baseline shows a review burden. The trial candidate aims for at most one
+  confirmed Nix version-update PR per week without increasing security delay.
+  Compare like-for-like counts after four weeks. Do not adopt the trial if the
+  target is unmet or safety worsens; if type evidence remains insufficient,
+  defer the adoption decision.
+
 The primary CI workflow is `.github/workflows/ci.yml` with workflow name `ci`.
 It runs Nix checks, Nix build, Go vulnerability checks, and secret scanning.
 `AGENTS.md` is the source of truth for agent guidance, and `CLAUDE.md` points
